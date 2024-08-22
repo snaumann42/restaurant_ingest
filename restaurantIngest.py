@@ -21,6 +21,7 @@ class RestaurantIngest(Ingest):
     drop_suffix: str = "_redundant"
     file_field_prefix: str = "is_from_"
     redundant_columns = ["address", "name", "city", "zip"]
+    unique_columns = ["address", "name", "city", "zip"]
     ingest_schema = {"name": StringDtype(), "address": StringDtype(),
                      "city": StringDtype(), "zip": StringDtype()}
 
@@ -33,7 +34,7 @@ class RestaurantIngest(Ingest):
         """Deduplicated data and enrich with additional fields."""
         # Create unique field based on row's unique fields
         df_with_hash = util.create_hash_column(df_raw,
-                                               ["address", "city", "zip"],
+                                               cls.unique_columns,
                                                cls.join_field)
         # get a count of all duplicates in this file
         df_dup_count = df_with_hash.groupby(
