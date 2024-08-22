@@ -1,15 +1,6 @@
 import hashlib
 import base64
 
-def deduplicate_and_count(df_data, dedup_columns, new_column_name):
-    """ takes a dataframe with possible duplicate rows and removes duplicates
-    and provides a count column based.
-
-    Keyword arguments:
-    df_data -- dataframe to deduplicate
-    new_column_name -- column name to use for count of duplicate rows found.
-    """
-
 
 def hash_string(value):
     """Takes a string and creates a hash string from it

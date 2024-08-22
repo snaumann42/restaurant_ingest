@@ -13,20 +13,7 @@ class TestUtil:
         "zip": ["12345", "12345", "12345"]
         }, dtype=StringDtype())
 
-    @pytest.mark.parametrize("test_data", [df1])
-    def test_deduplicate_restuarant(test_data):
-        count_column = "test_count"
-        df_dedup = util.deduplicate_restuarant(test_data.copy,
-                                               ["address", "city", "zip"],
-                                               count_column)
-
-        assert len(df_dedup.index) == 1, (
-            "dedup method should remove duplicates based on columns provided.")
-
-        assert df_dedup[count_column].iloc[0] == 3, (
-            "dedup method should add column to count duplicate rows.")
-
-    def test_create_hash_column():
+    def test_create_hash_column(self):
         value = "hello"
         encoded_value = util.hash_string(value)
 
@@ -34,14 +21,14 @@ class TestUtil:
             assert encoded_value == util.hash_string(value), (
                 "hash method should consistency produce the same value")
 
-    @pytest.mark.parametrize("test_data", [df1])
-    def test_hash_column(test_data):
+    def test_hash_column(self):
         column = "hash_column"
 
-        hash1 = util.create_hash_column(test_data.copy, ["address"], column)
+        hash1 = util.create_hash_column(self.df1.copy(), ["address"], column)
         hash2 = util.create_hash_column(
-            test_data.copy, ["address", "city"], column)
-        assert hash1[column] != hash2(column), (
+            self.df1.copy(), ["address", "city"], column)
+        count_joined = len(hash1.join(hash2.set_index(column), on=column, how="inner", rsuffix="_another"))
+        assert count_joined == 0, (
             "hash string parameter and be created from the list of columns",
             "provided.")
 
