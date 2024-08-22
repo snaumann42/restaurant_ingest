@@ -26,7 +26,7 @@ class RestaurantIngest(Ingest):
                      "city": StringDtype(), "zip": StringDtype()}
 
     output_schema = {join_field: StringDtype(),
-                     total_count: np.int32}
+                     total_count: np.int64}
     output_schema.update(ingest_schema)
 
     @classmethod
