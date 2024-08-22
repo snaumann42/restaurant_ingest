@@ -8,8 +8,6 @@ def hash_string(value):
     Keyword arguments:
     value -- string to encode
     """
-    # import base64
-    # base64.urlsafe_b64encode(
     return base64.urlsafe_b64encode(hashlib.sha3_512(value.encode()).digest())
 
 

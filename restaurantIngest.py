@@ -1,13 +1,13 @@
-from dataclasses import make_dataclass
+from pathlib import Path
+import os
+from collections import defaultdict
+import numpy as np
+
+import pandas
+from pandas import StringDtype, BooleanDtype, DataFrame
 
 from ingest_lib.ingest import Ingest
 from ingest_lib import util
-import pandas
-from pandas import StringDtype, BooleanDtype, DataFrame
-from collections import defaultdict
-import numpy as np
-from pathlib import Path
-import os
 
 
 class RestaurantIngest(Ingest):
@@ -46,8 +46,6 @@ class RestaurantIngest(Ingest):
             df_dup_count.set_index(cls.join_field),
             on=cls.join_field, how="right")
 
-        print(f"transform 2 >>> {df_current_data.tail(5)}")
-
         if (cls.temp_destination.is_file()):
             df_previous_data: DataFrame
 
@@ -59,7 +57,6 @@ class RestaurantIngest(Ingest):
             except Exception as ex:
                 print(f'Failure occurred while processing temp file, {ex=}')
                 raise
-
             # outer join on unique id, suffix duplicate fields with know value
             df_current_data = df_current_data.set_index(cls.join_field).join(
                 df_previous_data.set_index(cls.join_field),
@@ -82,20 +79,29 @@ class RestaurantIngest(Ingest):
                     df_current_data.pop(column)
 
             # Ensure file fields have nulls filled in with False
-            for column in df_current_data.columns:
-                if (cls.file_field_prefix in column):
-                    df_current_data[column] = df_current_data[
-                        column].fillna(False)
+            with pandas.option_context("future.no_silent_downcasting", True):
+                for column in df_current_data.columns:
+                    if (cls.file_field_prefix in column):
+                        df_current_data[column] = df_current_data[
+                            column].fillna(False).infer_objects(copy=False)
 
             # Ensure total count remains an int
             df_current_data[cls.total_count] = df_current_data[
-                cls.total_count].fillna(0).astype(np.int32)
+                cls.total_count].fillna(0).astype(np.int64)
 
-        cls.load(df_current_data)
+        return df_current_data
 
 
 if __name__ == '__main__':
-    RestaurantIngest.evaluate()
+    # Read all files from the ingest path
+    ingest_files = filter(lambda file:
+                          os.path.isfile(RestaurantIngest.ingest_path + file),
+                          os.listdir(RestaurantIngest.ingest_path))
+    for file_name in ingest_files:
+        with open(RestaurantIngest.ingest_path + file_name) as file_handle:
+            df_processed = RestaurantIngest.evaluate(file_handle, file_name)
+            RestaurantIngest.load(df_processed)
+
     if (RestaurantIngest.temp_destination.is_file()):
         os.rename(RestaurantIngest.temp_destination,
                   RestaurantIngest.destination)
