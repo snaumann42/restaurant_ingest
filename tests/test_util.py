@@ -71,6 +71,6 @@ class TestUtil:
         assert not result[self.file2], ("No cafe rows are from file2")
 
         # ensure all duplicates are removed
+        
+
         # test count is accurate
-        # name, address, city, zip are all not null?
-        # check both file names exist
