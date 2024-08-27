@@ -16,9 +16,11 @@ class Ingest:
     def evaluate(cls, file_handle, file_name):
         # retrieve field names from schema
         field_names = list(cls.ingest_schema.keys())
-
+        # add additional null values to remove
+        missing_values = ["", "NAN", "*"]
         df_data = pandas.read_csv(
-            file_handle, dtype=StringDtype())
+            file_handle, na_values=missing_values, dtype=StringDtype())
+
         # set proper column names
         df_data.columns = field_names
         # create ingest file boolean field

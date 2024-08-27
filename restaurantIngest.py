@@ -32,13 +32,15 @@ class RestaurantIngest(Ingest):
     @classmethod
     def transform(cls, df_raw):
         """Deduplicated and clean up data and enrich with additional fields."""
-        # drop rows with nan values
-        df_raw.dropna(inplace=True)
-        df_raw = df_raw[~df_raw['name'].isin(["NAN"])]
+        # drop rows with null values
+        df_no_na = df_raw.dropna()
         # drop address rows with zips not equal to 5 in length
-        df_raw = df_raw[df_raw.zip.str.len() == 5]
+        df_no_na = df_no_na[df_no_na.zip.str.len() == 5]
         # cleanup address data to allow for better deduplication
-        df_raw["address"] = df_raw["address"].apply(util.clean_address_data)
+        df_no_na["address"] = df_no_na["address"].apply(
+            util.clean_address_data)
+        # cleanup name data to allow for better deduplication
+        df_no_na["name"] = df_no_na["name"].apply(util.clean_name_data)
 
         # Create unique field based on row's unique fields
         df_with_hash = util.create_hash_column(df_raw,
@@ -115,7 +117,7 @@ if __name__ == '__main__':
     ingest_files = filter(lambda file:
                           os.path.isfile(RestaurantIngest.ingest_path + file),
                           os.listdir(RestaurantIngest.ingest_path))
-    for file_name in ingest_files:
+    for file_name in ["file1.csv", "file2.csv"]:
         print(f"Attempting to ingest {file_name}")
         with open(RestaurantIngest.ingest_path + file_name) as file_handle:
             df_processed = RestaurantIngest.evaluate(file_handle, file_name)

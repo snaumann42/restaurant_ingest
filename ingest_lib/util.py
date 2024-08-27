@@ -1,5 +1,4 @@
 import hashlib
-import base64
 import re
 from pandas import StringDtype
 
@@ -58,7 +57,7 @@ location_abbr_not_compiled = [
     (prefix_street + "SUITE" + postfix_location, r"\1STE\2"),
     (prefix_street + "TRAILER" + postfix_location, r"\1TRLR\2"),
     (prefix_street + "UPPER" + postfix_location, r"\1UPPR\2")]
-location_abbr = map(compile_RE_tuple, location_abbr_not_compiled)
+location_abbr = list(map(compile_RE_tuple, location_abbr_not_compiled))
 
 prefix_compass = r"([\D]+ )"
 postfix_compass = r"( .*)"
@@ -67,13 +66,25 @@ compass_abbr_not_compiled = [
     (prefix_compass + "EAST" + postfix_compass, r"\1E\2"),
     (prefix_compass + "SOUTH" + postfix_compass, r"\1S\2"),
     (prefix_compass + "NORTH" + postfix_compass, r"\1N\2")]
-compass_abbr = map(compile_RE_tuple, compass_abbr_not_compiled)
+compass_abbr = list(map(compile_RE_tuple, compass_abbr_not_compiled))
 
-postfix_POBox = r"( .*)"
+prefix_POBox = r"(.*[\s]+|^|.*\()"
+postfix_POBox = r"([\s]+|$)"
+postfix_POBox_digits = r"([\d]+.*$)"
 poBox_abbr_not_compiled = [
-    ("P O BOX" + postfix_POBox, r"PO BOX\1")
+    (prefix_POBox + "POST OFFICE BOX" + postfix_POBox, r"\1PO BOX\2"),
+    (prefix_POBox + "P O BOX" + postfix_POBox, r"\1PO BOX\2"),
+    (prefix_POBox + "POBOX" + postfix_POBox, r"\1PO BOX\2"),
+    (prefix_POBox + "POBOX" + postfix_POBox_digits, r"\1PO BOX \2"),
+    (prefix_POBox + "PO BOX" + postfix_POBox_digits, r"\1PO BOX \2")
 ]
 poBox_abbr = list(map(compile_RE_tuple, poBox_abbr_not_compiled))
+
+prefix_name = r"(.*)"
+name_abbr_not_compiled = [
+    (prefix_name + r" LLC", r"\1"),
+    (prefix_name + r" INC", r"\1")]
+name_abbr = list(map(compile_RE_tuple, name_abbr_not_compiled))
 
 
 def hash_string(value):
@@ -82,7 +93,7 @@ def hash_string(value):
     Keyword arguments:
     value -- string to encode
     """
-    return base64.urlsafe_b64encode(hashlib.sha3_512(value.encode()).digest())
+    return hashlib.sha3_512(value.encode()).hexdigest()
 
 
 def create_hash_column(df_data, columns, hash_name="hash_id"):
@@ -118,5 +129,19 @@ def clean_address_data(value):
         value = re.sub(pattern_tuple[0], pattern_tuple[1], value)
     # Clean up PO Boxes
     for pattern_tuple in poBox_abbr:
+        value = re.sub(pattern_tuple[0], pattern_tuple[1], value)
+    return value
+
+
+def clean_name_data(value):
+    """ Function meant for cleaning up name data.
+
+    Keyword arguments:
+    value -- name string to clean up
+    """
+    value = re.sub(r'\\', ' ', value)
+    value = str(value).strip()  # remove beginning and ending white space
+    value = re.sub(r'\s+', ' ', value)  # remove extra spaces
+    for pattern_tuple in name_abbr:
         value = re.sub(pattern_tuple[0], pattern_tuple[1], value)
     return value
