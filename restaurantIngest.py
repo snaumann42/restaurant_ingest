@@ -31,7 +31,15 @@ class RestaurantIngest(Ingest):
 
     @classmethod
     def transform(cls, df_raw):
-        """Deduplicated data and enrich with additional fields."""
+        """Deduplicated and clean up data and enrich with additional fields."""
+        # drop rows with nan values
+        df_raw.dropna(inplace=True)
+        df_raw = df_raw[~df_raw['name'].isin(["NAN"])]
+        # drop address rows with zips not equal to 5 in length
+        df_raw = df_raw[df_raw.zip.str.len() == 5]
+        # cleanup address data to allow for better deduplication
+        df_raw["address"] = df_raw["address"].apply(util.clean_address_data)
+
         # Create unique field based on row's unique fields
         df_with_hash = util.create_hash_column(df_raw,
                                                cls.unique_columns,
@@ -46,6 +54,7 @@ class RestaurantIngest(Ingest):
         df_current_data = df_with_hash.join(
             df_dup_count.set_index(cls.join_field),
             on=cls.join_field, how="right")
+        print(f"current ingest row count - {len(df_current_data)}")
 
         if (cls.temp_destination.is_file()):
             df_previous_data: DataFrame
@@ -62,8 +71,9 @@ class RestaurantIngest(Ingest):
             df_current_data = df_current_data.set_index(cls.join_field).join(
                 df_previous_data.set_index(cls.join_field),
                 how="outer", rsuffix=cls.drop_suffix).reset_index()
-
-            # count total duplicated rows
+            print("current joined with previous ingest row count - ",
+                  f"{len(df_current_data)}")
+            # count total duplicated rows (total_count + total_count_redundant)
             df_current_data[cls.total_count] = df_current_data[
                 cls.total_count].fillna(0) + df_current_data[
                     cls.total_count + cls.drop_suffix].fillna(0)
@@ -90,19 +100,34 @@ class RestaurantIngest(Ingest):
             df_current_data[cls.total_count] = df_current_data[
                 cls.total_count].fillna(0).astype(np.int64)
 
+            df_current_data.drop_duplicates(subset=cls.join_field,
+                                            inplace=True)
+            print(f"final row count - {len(df_current_data)}")
+
         return df_current_data
 
 
 if __name__ == '__main__':
+    import time
+    start_time = time.time()
+
     # Read all files from the ingest path
     ingest_files = filter(lambda file:
                           os.path.isfile(RestaurantIngest.ingest_path + file),
                           os.listdir(RestaurantIngest.ingest_path))
     for file_name in ingest_files:
+        print(f"Attempting to ingest {file_name}")
         with open(RestaurantIngest.ingest_path + file_name) as file_handle:
             df_processed = RestaurantIngest.evaluate(file_handle, file_name)
             RestaurantIngest.load(df_processed)
+            print(f"Completed ingesting {file_name}\n")
 
+    print("Finalizing run.")
     if (RestaurantIngest.temp_destination.is_file()):
         os.rename(RestaurantIngest.temp_destination,
                   RestaurantIngest.destination)
+
+    duration = (time.time() - start_time)
+    row_count = sum(1 for _ in open('final_restaurant.csv'))
+
+    print(f"--- {duration} seconds ---\n--- {row_count} rows ---")
