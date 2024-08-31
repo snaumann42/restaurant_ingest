@@ -43,7 +43,7 @@ class RestaurantIngest(Ingest):
         df_no_na["name"] = df_no_na["name"].apply(util.clean_name_data)
 
         # Create unique field based on row's unique fields
-        df_with_hash = util.create_hash_column(df_raw,
+        df_with_hash = util.create_hash_column(df_no_na,
                                                cls.unique_columns,
                                                cls.join_field)
         # get a count of all duplicates in this file
@@ -120,7 +120,8 @@ if __name__ == '__main__':
     for file_name in ["file1.csv", "file2.csv"]:
         print(f"Attempting to ingest {file_name}")
         with open(RestaurantIngest.ingest_path + file_name) as file_handle:
-            df_processed = RestaurantIngest.evaluate(file_handle, file_name)
+            df_ingested = RestaurantIngest.evaluate(file_handle, file_name)
+            df_processed = RestaurantIngest.transform(df_ingested)
             RestaurantIngest.load(df_processed)
             print(f"Completed ingesting {file_name}\n")
 

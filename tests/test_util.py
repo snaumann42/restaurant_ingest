@@ -19,11 +19,11 @@ class TestUtil:
                   "d28eb13fc11476264f07")
     df1 = pandas.DataFrame({
         "name": ["TBS CORNER DINER AND GRILL", "TBS CORNER DINER AND GRILL",
-                 "ANOTHER"],
+                 "ANOTHER", "null containing row"],
         "address": ["3085 JUPITER BLVD STE 19", "123 Different",
-                    "142 Another"],
-        "city": ["PALM BAY", "PALM BAY", "PALM BAY"],
-        "zip": ["32909", "32909", "32909"]
+                    "142 Another", ""],
+        "city": ["PALM BAY", "PALM BAY", "PALM BAY", ""],
+        "zip": ["32909", "32909", "32909", ""]
         }, dtype=StringDtype())
     df1[file2] = True
 

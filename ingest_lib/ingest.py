@@ -27,7 +27,7 @@ class Ingest:
         column_name = cls.file_field_prefix + file_name.split(".")[0]
         df_data = df_data.assign(**{column_name: True})
 
-        return cls.transform(df_data)
+        return df_data
 
     @classmethod
     def transform(cls):
