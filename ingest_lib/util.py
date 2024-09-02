@@ -1,5 +1,11 @@
 import hashlib
 import re
+import multiprocessing
+from multiprocessing import Pool
+
+import numpy as np
+from fuzzywuzzy import fuzz
+import pandas
 from pandas import StringDtype
 
 
@@ -59,14 +65,20 @@ location_abbr_not_compiled = [
     (prefix_street + "UPPER" + postfix_location, r"\1UPPR\2")]
 location_abbr = list(map(compile_RE_tuple, location_abbr_not_compiled))
 
-prefix_compass = r"([\D]+ )"
-postfix_compass = r"( .*)"
-compass_abbr_not_compiled = [
-    (prefix_compass + "WEST" + postfix_compass, r"\1W\2"),
-    (prefix_compass + "EAST" + postfix_compass, r"\1E\2"),
-    (prefix_compass + "SOUTH" + postfix_compass, r"\1S\2"),
-    (prefix_compass + "NORTH" + postfix_compass, r"\1N\2")]
-compass_abbr = list(map(compile_RE_tuple, compass_abbr_not_compiled))
+prefix_directional = r"(.+ )"
+postfix_directional = r"($)"
+pre_streetName_directional = r"(.+ )"
+post_streetName_directional = r"( rd)"
+directional_abbr_not_compiled = [
+    (prefix_directional + "WEST" + postfix_directional, r"\1W\2"),
+    (prefix_directional + "EAST" + postfix_directional, r"\1E\2"),
+    (prefix_directional + "SOUTH" + postfix_directional, r"\1S\2"),
+    (prefix_directional + "NORTH" + postfix_directional, r"\1N\2"),
+    (prefix_directional + "NORTH WEST" + postfix_directional, r"\1N W\2"),
+    (prefix_directional + "NORTH EAST" + postfix_directional, r"\1N E\2"),
+    (prefix_directional + "SOUTH WEST" + postfix_directional, r"\1S W\2"),
+    (prefix_directional + "SOUTH EAST" + postfix_directional, r"\1S E\2")]
+directional_abbr = list(map(compile_RE_tuple, directional_abbr_not_compiled))
 
 prefix_POBox = r"(.*[\s]+|^|.*\()"
 postfix_POBox = r"([\s]+|$)"
@@ -121,8 +133,8 @@ def clean_address_data(value):
     # Shorten common road values
     for pattern_tuple in road_abbr:
         value = re.sub(pattern_tuple[0], pattern_tuple[1], value)
-    # Shorten common compass values
-    for pattern_tuple in compass_abbr:
+    # Shorten common directional values
+    for pattern_tuple in directional_abbr:
         value = re.sub(pattern_tuple[0], pattern_tuple[1], value)
     # Shorten common location values
     for pattern_tuple in location_abbr:
@@ -145,3 +157,39 @@ def clean_name_data(value):
     for pattern_tuple in name_abbr:
         value = re.sub(pattern_tuple[0], pattern_tuple[1], value)
     return value
+
+
+def remove_fuzzy_matches(
+        df_data, groupby_vals=[], match_field="", fuzzy_score=80):
+    def check_fuzzy(df):
+        dupl_indexes = []
+        for i in range(len(df.values) - 1):
+            for j in range(i + 1, len(df.values)):
+                if fuzz.token_sort_ratio(df.values[i],
+                                         df.values[j]) >= fuzzy_score:
+                    dupl_indexes.append(df.index[j])
+        return dupl_indexes
+    df_new = df_data.copy()
+    indexes = df_new.groupby(
+        groupby_vals)[match_field].apply(check_fuzzy)
+
+    for index_list in indexes:
+        df_new.drop(index_list, inplace=True)
+
+    return df_new
+
+
+def multi_processing(df_data, apply_function, groupby=""):
+    cpus = multiprocessing.cpu_count()
+
+    if groupby:
+        grouped = df_data.groupby(groupby)
+        df1_splits = [grouped.get_group(group) for group in grouped.groups]
+    else:
+        df1_splits = np.array_split(df_data, cpus)
+
+    with Pool(processes=cpus) as pool:
+        results = pool.map(apply_function, df1_splits)
+        df_result = pandas.concat(results)
+
+    return df_result.reset_index(drop=True)
