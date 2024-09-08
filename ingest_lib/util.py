@@ -159,22 +159,62 @@ def clean_name_data(value):
     return value
 
 
-def remove_fuzzy_matches(
-        df_data, groupby_vals=[], match_field="", fuzzy_score=80):
+def mark_fuzzy_matches(df_data,
+                       match_field,
+                       groupby_vals=[],
+                       fuzzy_score=75,
+                       dupl_index_column="dupl",
+                       fill_value: int = -1):
+    """ Takes a data frame groups by 'groupby_vals' and fuzzy compares
+    'match_field'. Any matches that are within the 'fuzzy_score', the index of
+    the first match is placed in the second fields 'dupl_index_column'. The
+    'dupl_index_column' will default to be filled with 'nan_value'
+
+    Does not reset dataframe index to ensure returned 'dupl_index_column'
+    values will point to the correct rows.
+
+    Keyword arguments:
+    df_data -- Dataframe to process
+    match_field -- The column to check for fuzzy matches between other rows in
+    'df_data', this will default to all fields
+    groupby_vals -- Optional columns to groupby before comparing the
+    'match_field'
+    fuzzy_score -- An optional score for the fuzzy comparison
+    dupl_index_column -- an optional column name for storing the index of the
+    index of the duplicate pair
+    fill_value -- An optional value to fill 'dupl_index_column' for the
+    non-matching rows. This must be an integer value to allow for better
+    handling of index values returned in this field.
+    """
     def check_fuzzy(df):
-        dupl_indexes = []
+        dupl_map = {}
         for i in range(len(df.values) - 1):
             for j in range(i + 1, len(df.values)):
                 if fuzz.token_sort_ratio(df.values[i],
                                          df.values[j]) >= fuzzy_score:
-                    dupl_indexes.append(df.index[j])
-        return dupl_indexes
+                    # get original and see if it already is linked to a
+                    # duplicate, use it's original instead
+                    dupl_map[df.index[j]] = dupl_map.get(df.index[i],
+                                                         df.index[i])
+
+        # convert to list since this is a dataframe lambda and maps don't work
+        dupl_list = []
+        for key, value in dupl_map.items():
+            dupl_list.append(str(key) + ":" + str(value))
+
+        return dupl_list
+
     df_new = df_data.copy()
+
     indexes = df_new.groupby(
         groupby_vals)[match_field].apply(check_fuzzy)
 
+    df_new[dupl_index_column] = fill_value
+    # loop over all duplicates, add original index to dupl row
     for index_list in indexes:
-        df_new.drop(index_list, inplace=True)
+        for item in index_list:
+            dupl_index, original_index = item.split(":", 2)
+            df_new.at[int(dupl_index), dupl_index_column] = int(original_index)
 
     return df_new
 
@@ -192,4 +232,4 @@ def multi_processing(df_data, apply_function, groupby=""):
         results = pool.map(apply_function, df1_splits)
         df_result = pandas.concat(results)
 
-    return df_result.reset_index(drop=True)
+    return df_result

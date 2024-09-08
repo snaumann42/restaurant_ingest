@@ -64,7 +64,7 @@ class RestaurantCleaning(Ingest):
             on=cls.join_field, how="right")
 
         print("current ingest - ",
-                  f"{len(df_current_data)}")
+              f"{len(df_current_data)}")
         if (cls.temp_destination.is_file()):
             df_previous_data: DataFrame
 
@@ -99,7 +99,7 @@ class RestaurantCleaning(Ingest):
             # Drop redundant columns
             for column in df_current_data.columns:
                 if (cls.drop_suffix in column):
-                    df_current_data.pop(column)
+                    df_current_data.drop(column, axis=1, inplace=True)
 
             # Ensure file fields have nulls filled in with False
             with pandas.option_context("future.no_silent_downcasting", True):

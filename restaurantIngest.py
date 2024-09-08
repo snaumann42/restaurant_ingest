@@ -14,7 +14,7 @@ if __name__ == '__main__':
                               RestaurantCleaning.ingest_path + file),
                           os.listdir(RestaurantCleaning.ingest_path))
     initial_count = 0
-    for file_name in ["file1.csv", "file2.csv"]:
+    for file_name in ingest_files:
         print(f"Attempting to ingest {file_name}")
         with open(RestaurantCleaning.ingest_path + file_name) as file_handle:
             df_ingested = RestaurantCleaning.evaluate(file_handle)

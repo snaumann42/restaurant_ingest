@@ -3,10 +3,10 @@ This project will ingest multiple restaurant data sources, clean up the data and
 Since this is meant to be a production data pipeline, each ingest in our ingests folder will be considered a main/runnable ingest. The task description which lead to this project is added below.
 
 Current statistics, I'll profile the project to get a better idea of the multiprocessing time improvements.
---- 29.351725101470947 seconds ---
+--- 20.029337882995605 seconds ---
 --- initial row count: 417559 ---
 --- cleaned row count: 345788 ---
---- fuzzy row count: 321255 ---
+--- fuzzy row count: 315578 ---
 
 ## Task Description
 You are provided with two datasets named file1.csv and file2.csv, these files contain the name

@@ -15,8 +15,6 @@ class Ingest:
 
     @classmethod
     def evaluate(cls, file_handle):
-        # retrieve field names from schema
-        field_names = list(cls.ingest_schema.keys())
         # add additional null values to remove
         missing_values = ["", "NAN", "*"]
         df_data = pandas.read_csv(
@@ -24,7 +22,6 @@ class Ingest:
 
         # set proper column names
         pandas.set_option("display.max_columns", 100)
-        df_data.columns = field_names
         return df_data
 
     @classmethod
@@ -35,6 +32,7 @@ class Ingest:
     def load(cls, df_data):
         df_data.to_csv(path_or_buf=cls.temp_destination, index=False,
                        quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
+
     @classmethod
     def finalize(cls):
         if (cls.temp_destination.is_file()):
